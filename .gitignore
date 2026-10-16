@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+*.user
+
+# Uploaded files
+wwwroot/uploads/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+.vscode/
+Thumbs.db
