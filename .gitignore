@@ -8,6 +8,7 @@ wwwroot/uploads/
 
 # Environment files
 .env
+.env.docker
 .env.*
 !.env.example
 
