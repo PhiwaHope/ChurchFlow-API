@@ -1,3 +1,5 @@
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -5,15 +7,14 @@ using Microsoft.AspNetCore.Mvc;
 [Route("api/[controller]")]
 public class UploadsController : ControllerBase
 {
-    private readonly IWebHostEnvironment _env;
+    private readonly Cloudinary _cloudinary;
 
-    // Whitelist: only these file types are accepted.
     private static readonly string[] Allowed = { ".jpg", ".jpeg", ".png", ".webp", ".pdf" };
     private const long MaxBytes = 10 * 1024 * 1024; // 10 MB
 
-    public UploadsController(IWebHostEnvironment env)
+    public UploadsController(Cloudinary cloudinary)
     {
-        _env = env;
+        _cloudinary = cloudinary;
     }
 
     [Authorize(Roles = "Chairperson")]
@@ -22,7 +23,6 @@ public class UploadsController : ControllerBase
     {
         if (file == null || file.Length == 0)
             return BadRequest("No file uploaded");
-
         if (file.Length > MaxBytes)
             return BadRequest("File is too large (max 10 MB)");
 
@@ -30,19 +30,20 @@ public class UploadsController : ControllerBase
         if (!Allowed.Contains(extension))
             return BadRequest("Only JPG, PNG, WEBP and PDF files are allowed");
 
-        // Never use the client's file name: it could contain a path
-        // or overwrite an existing file. A GUID is unique and safe.
-        var fileName = $"{Guid.NewGuid()}{extension}";
+        using var stream = file.OpenReadStream();
 
-        var folder = Path.Combine(_env.WebRootPath, "uploads");
-        Directory.CreateDirectory(folder);
-
-        using (var stream = new FileStream(Path.Combine(folder, fileName), FileMode.Create))
+        // AutoUploadParams lets Cloudinary detect images vs PDFs.
+        var uploadParams = new AutoUploadParams
         {
-            await file.CopyToAsync(stream);
-        }
+            File = new FileDescription($"{Guid.NewGuid()}{extension}", stream),
+            Folder = "churchflow"
+        };
 
-        // Relative path: this is what gets stored in the database.
-        return Ok(new { path = $"/uploads/{fileName}" });
+        var result = await _cloudinary.UploadAsync(uploadParams);
+        if (result.Error != null)
+            return BadRequest($"Upload failed: {result.Error.Message}");
+
+        // Full public URL: this is what gets stored in the database.
+        return Ok(new { path = result.SecureUrl.ToString() });
     }
 }

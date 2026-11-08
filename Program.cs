@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi;
+using CloudinaryDotNet;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -82,6 +83,16 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
+});
+//Cloudinary builder
+builder.Services.AddSingleton(sp =>
+{
+    var cfg = builder.Configuration;
+    var account = new Account(
+        cfg["Cloudinary:CloudName"],
+        cfg["Cloudinary:ApiKey"],
+        cfg["Cloudinary:ApiSecret"]);
+    return new Cloudinary(account) { Api = { Secure = true } };
 });
 
 var app = builder.Build();
